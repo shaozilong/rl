@@ -25,7 +25,6 @@
 //
 
 #include "Body.h"
-#include "Compound.h"
 #include "Exception.h"
 #include "Joint.h"
 #include "Model.h"
@@ -62,23 +61,19 @@ namespace rl
 		}
 		
 		void
-		Model::add(Compound* compound, const Frame* a, const Frame* b)
+		Model::add(Frame* frame)
 		{
-			compound->inTransform = new Transform();
-			this->add(compound->inTransform, a, compound->inFrame);
-			
-			compound->outTransform = new Transform();
-			this->add(compound->outTransform, compound->outFrame, b);
+			this->add(::std::shared_ptr<Frame>(frame));
 		}
 		
 		void
-		Model::add(Frame* frame)
+		Model::add(const ::std::shared_ptr<Frame>& frame)
 		{
 			Vertex vertex = ::boost::add_vertex(this->tree);
 			frame->setVertexDescriptor(vertex);
-			this->tree[vertex].reset(frame);
+			this->tree[vertex] = frame;
 			
-			if (dynamic_cast<World*>(frame))
+			if (::std::dynamic_pointer_cast<World>(frame))
 			{
 				this->root = vertex;
 			}
@@ -87,9 +82,15 @@ namespace rl
 		void
 		Model::add(Transform* transform, const Frame* a, const Frame* b)
 		{
+			this->add(::std::shared_ptr<Transform>(transform), a, b);
+		}
+		
+		void
+		Model::add(const ::std::shared_ptr<Transform>& transform, const Frame* a, const Frame* b)
+		{
 			Edge edge = ::boost::add_edge(a->getVertexDescriptor(), b->getVertexDescriptor(), this->tree).first;
 			transform->setEdgeDescriptor(edge);
-			this->tree[edge].reset(transform);
+			this->tree[edge] = transform;
 		}
 		
 		bool
@@ -98,14 +99,7 @@ namespace rl
 			assert(i < this->bodies.size());
 			assert(j < this->bodies.size());
 			
-			if (this->bodies[i]->selfcollision.count(this->bodies[j]) > 0 || this->bodies[j]->selfcollision.count(this->bodies[i]) > 0)
-			{
-				return false;
-			}
-			else
-			{
-				return true;
-			}
+			return this->bodies[i]->getCollision(this->bodies[j]) || this->bodies[j]->getCollision(this->bodies[i]);
 		}
 		
 		::rl::math::Vector
@@ -563,34 +557,13 @@ namespace rl
 		{
 			assert(i < this->bodies.size());
 			
-			return this->bodies[i]->collision;
+			return this->bodies[i]->getCollision();
 		}
 		
 		::std::uniform_real_distribution<::rl::math::Real>::result_type
 		Model::rand()
 		{
 			return this->randDistribution(this->randEngine);
-		}
-		
-		void
-		Model::replace(Compound* compound, Transform* transform)
-		{
-			this->add(transform, compound->inFrame, compound->outFrame);
-			this->remove(compound);
-		}
-		
-		void
-		Model::replace(Transform* transform, Compound* compound)
-		{
-			this->add(compound, transform->in, transform->out);
-			this->remove(transform);
-		}
-		
-		void
-		Model::remove(Compound* compound)
-		{
-			this->remove(compound->inTransform);
-			this->remove(compound->outTransform);
 		}
 		
 		void
@@ -672,6 +645,24 @@ namespace rl
 		}
 		
 		void
+		Model::setMaximum(const ::rl::math::Vector& max)
+		{
+			for (::std::size_t i = 0, j = 0; i < this->joints.size(); j += this->joints[i]->getDofPosition(), ++i)
+			{
+				this->joints[i]->setMaximum(max.segment(j, this->joints[i]->getDofPosition()));
+			}
+		}
+		
+		void
+		Model::setMinimum(const ::rl::math::Vector& min)
+		{
+			for (::std::size_t i = 0, j = 0; i < this->joints.size(); j += this->joints[i]->getDofPosition(), ++i)
+			{
+				this->joints[i]->setMinimum(min.segment(j, this->joints[i]->getDofPosition()));
+			}
+		}
+		
+		void
 		Model::setName(const ::std::string& name)
 		{
 			this->name = name;
@@ -691,6 +682,15 @@ namespace rl
 			for (::std::size_t i = 0, j = 0; i < this->joints.size(); j += this->joints[i]->getDofPosition(), ++i)
 			{
 				this->joints[i]->setPosition(q.segment(j, this->joints[i]->getDofPosition()));
+			}
+		}
+		
+		void
+		Model::setSpeed(const ::rl::math::Vector& speed)
+		{
+			for (::std::size_t i = 0, j = 0; i < this->joints.size(); j += this->joints[i]->getDof(), ++i)
+			{
+				this->joints[i]->setSpeed(speed.segment(j, this->joints[i]->getDof()));
 			}
 		}
 		

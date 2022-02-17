@@ -50,7 +50,6 @@ namespace rl
 	namespace mdl
 	{
 		class Body;
-		class Compound;
 		class Joint;
 		class World;
 		
@@ -61,11 +60,13 @@ namespace rl
 			
 			virtual ~Model();
 			
-			void add(Compound* compound, const Frame* a, const Frame* b);
+			RL_MDL_DEPRECATED void add(Frame* frame);
 			
-			void add(Frame* frame);
+			void add(const ::std::shared_ptr<Frame>& frame);
 			
-			void add(Transform* transform, const Frame* a, const Frame* b);
+			RL_MDL_DEPRECATED void add(Transform* transform, const Frame* a, const Frame* b);
+			
+			void add(const ::std::shared_ptr<Transform>& transform, const Frame* a, const Frame* b);
 			
 			bool areColliding(const ::std::size_t& i, const ::std::size_t& j) const;
 			
@@ -161,12 +162,6 @@ namespace rl
 			
 			bool isColliding(const ::std::size_t& i) const;
 			
-			void replace(Compound* compound, Transform* transform);
-			
-			void replace(Transform* transform, Compound* compound);
-			
-			void remove(Compound* compound);
-			
 			void remove(Frame* frame);
 			
 			void remove(Transform* transform);
@@ -183,11 +178,17 @@ namespace rl
 			
 			void setManufacturer(const ::std::string& manufacturer);
 			
+			void setMaximum(const ::rl::math::Vector& max);
+			
+			void setMinimum(const ::rl::math::Vector& min);
+			
 			void setName(const ::std::string& name);
 			
 			void setOperationalVelocity(const ::std::size_t& i, const ::rl::math::MotionVector& v) const;
 			
 			void setPosition(const ::rl::math::Vector& q);
+			
+			void setSpeed(const ::rl::math::Vector& speed);
 			
 			void setTorque(const ::rl::math::Vector& tau);
 			
@@ -206,20 +207,12 @@ namespace rl
 			const ::rl::math::Transform& world() const;
 			
 		protected:
-			friend class Compound;
-			
 			typedef ::boost::adjacency_list<
 				::boost::listS,
 				::boost::listS,
 				::boost::bidirectionalS,
-				::boost::property<
-					::boost::vertex_color_t, Compound*,
-					::std::shared_ptr<Frame>
-				>,
-				::boost::property<
-					::boost::edge_weight_t, Compound*,
-					::std::shared_ptr<Transform>
-				>,
+				::std::shared_ptr<Frame>,
+				::std::shared_ptr<Transform>,
 				::boost::no_property,
 				::boost::listS
 			> Tree;
